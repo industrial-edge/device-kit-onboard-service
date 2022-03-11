@@ -1,11 +1,9 @@
-/*
- * Copyright (c) 2021 Siemens AG
- * Licensed under the MIT license
- * See LICENSE file in the top-level directory
- */
+// Industrial Edge Device Kit API
+// Copyright Siemens AG. 2020, All rights reserved.
 
 syntax = "proto3";
 import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
 import "Network.proto";
 
 option go_package = ".;siemens_iedge_dmapi_v1";
@@ -29,12 +27,12 @@ message Onboarding  {
     string  deviceRole =14;
    }
    
-
 // Security section in IEM Onboarding JSON file.
 message Device{
     siemens.iedge.dmapi.network.v1.NetworkSettings Network=1;
     repeated string ntpServer=2;
     string dockerIP=3;
+    google.protobuf.Any customConfiguration=4; //device builder specific custom configuraiton.
 }
 
 // Security section in IEM Onboarding JSON file.

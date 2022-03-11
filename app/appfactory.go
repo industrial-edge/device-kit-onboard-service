@@ -27,6 +27,7 @@ const (
 type ClientPack struct {
 	NetworkClient v1.NetworkServiceClient
 	NtpClient     v1.NtpServiceClient
+	SystemClient  v1.SystemServiceClient
 	RestClient    edgecore.EdgeCoreRuntimeRest
 }
 // ClientFactory Interface for servive clients
