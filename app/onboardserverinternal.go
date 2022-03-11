@@ -8,6 +8,7 @@ package app
 
 import (
 	"context"
+	"github.com/golang/protobuf/ptypes/any"
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"os"
@@ -43,6 +44,20 @@ func (o *OnboardServer) configureNTP(ctx context.Context, configuration *v1.Devi
 		}
 		log.Println("Applied Ntp settings")
 	}
+	return nil
+}
+
+func (o *OnboardServer) configureCustomSettings(ctx context.Context, customConfiguration *any.Any) error {
+	if customConfiguration != nil {
+		log.Println("ApplyCustomSettings  rpc method will be called...")
+		_, err2 := o.parentApp.Clients.SystemClient.ApplyCustomSettings(ctx, customConfiguration)
+		if err2 != nil {
+			log.Println("Failed apply custom settings")
+			return status.New(codes.Internal, "Applying custom settings failed: "+err2.Error()).Err()
+		}
+		log.Println("Applied custom settings")
+	}
+
 	return nil
 }
 

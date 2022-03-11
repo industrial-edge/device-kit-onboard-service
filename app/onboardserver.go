@@ -87,6 +87,11 @@ func (o *OnboardServer) ApplyConfiguration(ctx context.Context, configuration *v
 		log.Println("Daemon Reload Failed")
 	}
 
+	if err := o.configureCustomSettings(ctx, configuration.Device.CustomConfiguration); err != nil{
+		log.Println("error configureCustomSettings : ", err)
+	}
+
+
 	if err := o.write2Device(configuration.Onboarding.DeviceId, "/var/device.id"); err != nil  {
 		log.Println("An error occurred while writing the device ID to the file")
 		return void, err
