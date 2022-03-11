@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"github.com/golang/protobuf/ptypes/any"
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"onboardservice/internal/system"
@@ -79,6 +80,7 @@ func (m *MockListener) RecvMsg(a interface{}) error {
 type mockNetwork struct {
 	mock.Mock
 }
+
 type mockNtp struct {
 	mock.Mock
 }
@@ -103,6 +105,22 @@ func (m *mockNtp) GetStatus(ctx context.Context, in *empty.Empty, opts ...grpc.C
 
 type mockSystem struct {
 	mock.Mock
+}
+
+func (m mockSystem) HardReset(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
+	panic("implement me")
+}
+
+func (m mockSystem) GetCustomSettings(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*any.Any, error) {
+	panic("implement me")
+}
+
+func (m mockSystem) ApplyCustomSettings(ctx context.Context, in *any.Any, opts ...grpc.CallOption) (*empty.Empty, error) {
+	panic("implement me")
+}
+
+func (m mockSystem) GetLogFile(ctx context.Context, in *v1.LogRequest, opts ...grpc.CallOption) (*v1.LogResponse, error) {
+	panic("implement me")
 }
 
 func (m mockSystem) RestartDevice(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
@@ -176,11 +194,13 @@ func (m *mockNetwork) GetInterfaceWithMac(ctx context.Context, in *v1.NetworkInt
 	panic("implement me")
 }
 
+
+func (m *mockNetwork) GetInterfaceWithLabel(ctx context.Context, in *v1.NetworkInterfaceRequestWithLabel, opts ...grpc.CallOption) (*v1.Interface, error) {
+	panic("implement me")
+}
+
+
 func (m *mockNetwork) ApplySettings(ctx context.Context, in *v1.NetworkSettings, opts ...grpc.CallOption) (*empty.Empty, error) {
 	args := m.Called(ctx, in)
 	return &empty.Empty{}, args.Error(1)
-}
-
-func (m *mockNetwork) ListenInterfaces(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (v1.NetworkService_ListenInterfacesClient, error) {
-	panic("implement me")
 }

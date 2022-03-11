@@ -1,10 +1,5 @@
 FROM golang:1.17
 
-ENV http_proxy http://194.138.0.5:9400
-ENV HTTP_PROXY http://194.138.0.5:9400
-ENV https_proxy http://194.138.0.5:9400
-ENV HTTPS_PROXY http://194.138.0.5:9400
-
 # Install protobuf from source
 RUN apt-get update && \
     apt-get -y install git unzip build-essential autoconf libtool
@@ -26,6 +21,9 @@ RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
 
 ## Add LLVM apt repository
 RUN echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-5.0 main" | tee -a /etc/apt/sources.list
+
+## Install jq
+RUN apt-get install -y --no-install-recommends jq
 
 ## Install clang from LLVM repository
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -57,8 +55,9 @@ RUN curl -L \
     chmod u+x /usr/bin/jfrog
 
 # Install Deb/Rpm packaging tool 'goreleaser'
-RUN curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh -s -- -b /usr/local/bin/ "v0.131.1"
-
+RUN echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | tee /etc/apt/sources.list.d/goreleaser.list
+RUN apt update
+RUN apt install goreleaser -y
 
 # Setup Go environment
 ENV GOPATH /go

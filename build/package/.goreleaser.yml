@@ -45,8 +45,9 @@ nfpms:
   formats:
     - deb
 
-  files:
-    "dm-onboard.service": "/lib/systemd/system/dm-onboard.service"
+  contents:
+    - src: "dm-onboard.service"
+      dst: "/lib/systemd/system/dm-onboard.service"
 
   # Override default /usr/local/bin destination for binaries
   bindir: /usr/bin
