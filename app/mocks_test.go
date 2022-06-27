@@ -2,11 +2,12 @@ package app
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/any"
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"onboardservice/internal/system"
 	"time"
+
+	"github.com/golang/protobuf/ptypes/any"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/mock"
@@ -194,11 +195,9 @@ func (m *mockNetwork) GetInterfaceWithMac(ctx context.Context, in *v1.NetworkInt
 	panic("implement me")
 }
 
-
 func (m *mockNetwork) GetInterfaceWithLabel(ctx context.Context, in *v1.NetworkInterfaceRequestWithLabel, opts ...grpc.CallOption) (*v1.Interface, error) {
 	panic("implement me")
 }
-
 
 func (m *mockNetwork) ApplySettings(ctx context.Context, in *v1.NetworkSettings, opts ...grpc.CallOption) (*empty.Empty, error) {
 	args := m.Called(ctx, in)

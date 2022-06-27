@@ -4,7 +4,6 @@
  * See LICENSE file in the top-level directory
  */
 
-
 syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "google/protobuf/any.proto";
