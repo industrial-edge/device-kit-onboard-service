@@ -17,7 +17,8 @@ RUN git clone https://github.com/google/protobuf.git && \
 # Install LLVM as default compiler, for memory sanitizer
 
 ## Add apt key for LLVM repository
-RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+#RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+RUN curl -sS https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
 
 ## Add LLVM apt repository
 RUN echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-5.0 main" | tee -a /etc/apt/sources.list

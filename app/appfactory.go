@@ -8,21 +8,23 @@ package app
 
 import (
 	"context"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	edgecore "onboardservice/internal/restclient"
 	"onboardservice/internal/system"
+
+	"google.golang.org/grpc"
 )
 
 const (
-	socketBasePath              = "/var/run/devicemodel/"
-	networkServerAddress        = socketBasePath + "network.sock"
-	ntpServerAddress            = socketBasePath + "ntp.sock"
-	systemServerAddress         = socketBasePath + "system.sock"
-	restAPI                     = "https://localhost/device/edge/b.service/api"
+	socketBasePath       = "/var/run/devicemodel/"
+	networkServerAddress = socketBasePath + "network.sock"
+	ntpServerAddress     = socketBasePath + "ntp.sock"
+	systemServerAddress  = socketBasePath + "system.sock"
+	restAPI              = "https://localhost/device/edge/b.service/api"
 )
+
 // ClientPack type contains IEDK Servies and edgeCoreRuntime Rest API
 type ClientPack struct {
 	NetworkClient v1.NetworkServiceClient
@@ -30,11 +32,13 @@ type ClientPack struct {
 	SystemClient  v1.SystemServiceClient
 	RestClient    edgecore.EdgeCoreRuntimeRest
 }
+
 // ClientFactory Interface for servive clients
 type ClientFactory interface {
 	CreateClients() *ClientPack
 	CreateHelper() system.Configurable
 }
+
 // ClientFactoryImpl implements ClientFactory interface
 type ClientFactoryImpl struct {
 }
@@ -67,8 +71,9 @@ func (o ClientFactoryImpl) CreateClients() *ClientPack {
 	}
 	return &pack
 }
+
 // CreateHelper Cretes helper class that generates and Nginx Configurations.
 func (o ClientFactoryImpl) CreateHelper() system.Configurable {
 
-	return  &system.Helper{}
+	return &system.Helper{}
 }

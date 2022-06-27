@@ -8,10 +8,11 @@ package app
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/any"
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"os"
+
+	"github.com/golang/protobuf/ptypes/any"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -78,4 +79,3 @@ func (o *OnboardServer) write2Device(content string, filePath string) error {
 	}
 	return nil
 }
-

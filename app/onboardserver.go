@@ -27,7 +27,7 @@ type OnboardServer struct {
 }
 
 const (
-	leaveMessage = "ApplyConfiguration leave."
+	leaveMessage        = "ApplyConfiguration leave."
 	daemonReloadCommand = "/usr/bin/systemctl daemon-reload"
 )
 
@@ -83,16 +83,15 @@ func (o *OnboardServer) ApplyConfiguration(ctx context.Context, configuration *v
 		log.Println(leaveMessage)
 		return void, err
 	}
-	if err := o.parentApp.helper.DaemonReload(daemonReloadCommand); err == false  {
+	if err := o.parentApp.helper.DaemonReload(daemonReloadCommand); err == false {
 		log.Println("Daemon Reload Failed")
 	}
 
-	if err := o.configureCustomSettings(ctx, configuration.Device.CustomConfiguration); err != nil{
+	if err := o.configureCustomSettings(ctx, configuration.Device.CustomConfiguration); err != nil {
 		log.Println("error configureCustomSettings : ", err)
 	}
 
-
-	if err := o.write2Device(configuration.Onboarding.DeviceId, "/var/device.id"); err != nil  {
+	if err := o.write2Device(configuration.Onboarding.DeviceId, "/var/device.id"); err != nil {
 		log.Println("An error occurred while writing the device ID to the file")
 		return void, err
 	}

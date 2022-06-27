@@ -31,10 +31,10 @@ type DeviceModelService interface {
 
 // MainApp application type
 type MainApp struct {
-	Clients                *ClientPack
-	serverInstance         *OnboardServer
-	helper                 system.Configurable
-	close                  chan bool
+	Clients        *ClientPack
+	serverInstance *OnboardServer
+	helper         system.Configurable
+	close          chan bool
 }
 
 type listenerInfo struct {
@@ -55,10 +55,10 @@ func createNewListenerInfo(thelistener v1.OnboardService_ListenOnboardStateServe
 func CreateServiceApp(factory ClientFactory) *MainApp {
 
 	app := MainApp{
-		Clients:                factory.CreateClients(),
-		serverInstance:         &OnboardServer{},
-		close:                  make(chan bool),
-		helper:                 factory.CreateHelper(),
+		Clients:        factory.CreateClients(),
+		serverInstance: &OnboardServer{},
+		close:          make(chan bool),
+		helper:         factory.CreateHelper(),
 	}
 
 	server := OnboardServer{
@@ -150,7 +150,6 @@ func chownSocket(address string, userName string, groupName string) error {
 
 // StartApp starts things up
 func (app *MainApp) StartApp() {
-
 
 	go func() {
 		onboardStatus, err := app.Clients.RestClient.Onboarded()
