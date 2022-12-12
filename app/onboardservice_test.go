@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"os"
@@ -10,12 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
-//Testify suite runner detected as race
+// Testify suite runner detected as race
 var testMutex sync.Mutex = sync.Mutex{}
 
 type TestSuite struct {
@@ -38,9 +38,9 @@ func (suite *TestSuite) SetupSuite() {
 	initMocks(suite)
 
 	suite.ml.On("ApplyLedAction", mock.Anything,
-		mock.Anything).Return(&empty.Empty{}, nil)
+		mock.Anything).Return(&emptypb.Empty{}, nil)
 
-	suite.ml.On("ResetAll", mock.Anything, mock.Anything).Return(&empty.Empty{}, nil)
+	suite.ml.On("ResetAll", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil)
 }
 func (suite *TestSuite) SetupTest() {
 }
@@ -53,7 +53,7 @@ func initMocks(suite *TestSuite) {
 	suite.mSys = mockSystem{Mock: mock.Mock{}}
 
 	suite.ml.On("ApplyLedAction", mock.Anything,
-		mock.Anything).Return(&empty.Empty{}, nil)
+		mock.Anything).Return(&emptypb.Empty{}, nil)
 	suite.mockClients = &ClientPack{}
 	suite.mockClients.RestClient = &suite.mpi
 	suite.mockClients.NtpClient = &suite.mn
@@ -74,35 +74,35 @@ func (suite *TestSuite) TearDownSuite() {
 	log.Println("Test suite end")
 }
 func (suite *TestSuite) Test_ApplyAllConfigurations() {
-	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&empty.Empty{},
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
 		nil).Once()
-	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&empty.Empty{}, nil).Once()
-	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&empty.Empty{}, nil).Once()
+	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
+	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 	_, err := suite.app.serverInstance.ApplyConfiguration(context.Background(), deviceConfig)
 	suite.Nil(err, "apply test failed", err)
 }
 func (suite *TestSuite) Test_ApplyAllConfigurationsWithNetworkFail() {
-	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&empty.Empty{},
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
 		nil).Once()
-	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&empty.Empty{}, errors.New("virtual error")).Once()
-	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&empty.Empty{}, nil).Once()
+	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, errors.New("virtual error")).Once()
+	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 	_, err := suite.app.serverInstance.ApplyConfiguration(context.Background(), deviceConfig)
 	suite.NotNil(err, "apply test failed", err)
 }
 func (suite *TestSuite) Test_ApplyAllConfigurationsWithNtpFail() {
 
-	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&empty.Empty{},
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
 		errors.New("virtual error")).Once()
-	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&empty.Empty{}, nil).Once()
+	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 	_, err := suite.app.serverInstance.ApplyConfiguration(context.Background(), deviceConfig)
 	suite.NotNil(err, "apply test failed", err)
 }
 func (suite *TestSuite) TestOnboardServer_OnboardWithUSB() {
 
-	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&empty.Empty{},
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
 		nil).Once()
-	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&empty.Empty{}, nil).Once()
-	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&empty.Empty{}, nil).Once()
+	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
+	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 
 	suite.mpi.On("Activate", mock.Anything).
 		Return(true, nil).Once()
@@ -114,12 +114,12 @@ func (suite *TestSuite) TestOnboardServer_OnboardWithUSB() {
 
 func (suite *TestSuite) TestOnboardServer_OnboardWithUSB_FailActivate() {
 	suite.mpi.On("Onboarded").Return(false, nil).Once()
-	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&empty.Empty{},
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
 		nil).Once()
 	suite.mpi.On("Activate", mock.Anything).
 		Return(false, errors.New("virtual error")).Once()
-	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&empty.Empty{}, nil).Once()
-	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&empty.Empty{}, nil).Once()
+	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
+	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 
 	_, err2 := suite.app.serverInstance.OnboardWithUSB(context.Background(), deviceConfig)
 	suite.NotNil(err2, "apply test failed", err2)
@@ -176,7 +176,7 @@ func (suite *TestSuite) TestOnboardServer_Subscribe() {
 	}
 
 	go func(testSuite *TestSuite) {
-		testSuite.app.serverInstance.ListenOnboardState(&empty.Empty{}, listener)
+		testSuite.app.serverInstance.ListenOnboardState(&emptypb.Empty{}, listener)
 	}(suite)
 
 	time.Sleep(200 * time.Millisecond)

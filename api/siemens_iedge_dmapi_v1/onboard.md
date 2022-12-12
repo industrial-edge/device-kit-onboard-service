@@ -54,6 +54,7 @@ Security section in IEM Onboarding JSON file.
 | Network | [siemens.iedge.dmapi.network.v1.NetworkSettings](#siemens.iedge.dmapi.network.v1.NetworkSettings) |  |  |
 | ntpServer | [string](#string) | repeated |  |
 | dockerIP | [string](#string) |  |  |
+| customConfiguration | [google.protobuf.Any](#google.protobuf.Any) |  | device builder specific custom configuraiton. |
 
 
 

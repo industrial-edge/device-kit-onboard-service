@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Siemens AG
+ * Copyright (c) 2022 Siemens AG
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -8,11 +8,10 @@ package app
 
 import (
 	"context"
+	"google.golang.org/protobuf/types/known/anypb"
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"os"
-
-	"github.com/golang/protobuf/ptypes/any"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -48,7 +47,7 @@ func (o *OnboardServer) configureNTP(ctx context.Context, configuration *v1.Devi
 	return nil
 }
 
-func (o *OnboardServer) configureCustomSettings(ctx context.Context, customConfiguration *any.Any) error {
+func (o *OnboardServer) configureCustomSettings(ctx context.Context, customConfiguration *anypb.Any) error {
 	if customConfiguration != nil {
 		log.Println("ApplyCustomSettings  rpc method will be called...")
 		_, err2 := o.parentApp.Clients.SystemClient.ApplyCustomSettings(ctx, customConfiguration)
@@ -62,7 +61,7 @@ func (o *OnboardServer) configureCustomSettings(ctx context.Context, customConfi
 	return nil
 }
 
-//  write2Device writes given content to given path.
+// write2Device writes given content to given path.
 func (o *OnboardServer) write2Device(content string, filePath string) error {
 	// create file
 	f, err := os.Create(filePath)

@@ -1,9 +1,9 @@
-FROM golang:1.17
+FROM golang:1.19.3
 
 # Install protobuf from source
 RUN apt-get update && \
     apt-get -y install git unzip build-essential autoconf libtool
-RUN git clone https://github.com/google/protobuf.git && \
+RUN git clone --depth 1 --branch v21.9 https://github.com/google/protobuf.git && \
     cd protobuf && \
     ./autogen.sh && \
     ./configure && \

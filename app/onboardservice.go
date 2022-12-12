@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Siemens AG
+ * Copyright (c) 2022 Siemens AG
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -51,7 +51,7 @@ func createNewListenerInfo(thelistener v1.OnboardService_ListenOnboardStateServe
 	}
 }
 
-//CreateServiceApp creates main App with given clientpack factory
+// CreateServiceApp creates main App with given clientpack factory
 func CreateServiceApp(factory ClientFactory) *MainApp {
 
 	app := MainApp{
@@ -75,7 +75,7 @@ func CreateServiceApp(factory ClientFactory) *MainApp {
 	return &app
 }
 
-//StopGRPC Sends stop signal
+// StopGRPC Sends stop signal
 func (app MainApp) StopGRPC() {
 	go func() { app.close <- true }()
 }
