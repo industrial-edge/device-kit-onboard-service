@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Siemens AG
+ * Copyright (c) 2022 Siemens AG
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -25,7 +25,7 @@ const (
 	restAPI              = "https://localhost/device/edge/b.service/api"
 )
 
-// ClientPack type contains IEDK Servies and edgeCoreRuntime Rest API
+// ClientPack type contains IEDK Services and edgeCoreRuntime Rest API
 type ClientPack struct {
 	NetworkClient v1.NetworkServiceClient
 	NtpClient     v1.NtpServiceClient
@@ -33,7 +33,7 @@ type ClientPack struct {
 	RestClient    edgecore.EdgeCoreRuntimeRest
 }
 
-// ClientFactory Interface for servive clients
+// ClientFactory Interface for service clients
 type ClientFactory interface {
 	CreateClients() *ClientPack
 	CreateHelper() system.Configurable
@@ -72,7 +72,7 @@ func (o ClientFactoryImpl) CreateClients() *ClientPack {
 	return &pack
 }
 
-// CreateHelper Cretes helper class that generates and Nginx Configurations.
+// CreateHelper creates helper class that generates and Nginx Configurations.
 func (o ClientFactoryImpl) CreateHelper() system.Configurable {
 
 	return &system.Helper{}

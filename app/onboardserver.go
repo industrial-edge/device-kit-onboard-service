@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Siemens AG
+ * Copyright (c) 2022 Siemens AG
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -8,17 +8,18 @@ package app
 
 import (
 	"context"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"sync"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-//OnboardServer as GRPC Server
+// OnboardServer as GRPC Server
 type OnboardServer struct {
+	v1.UnimplementedOnboardServiceServer
 	listeners map[int32]listenerInfo
 	status    *v1.OnboardingStatus
 	parentApp *MainApp
@@ -36,23 +37,23 @@ const (
 
 // OnboardWithUSB  Applies all settings then registers the device.
 func (o *OnboardServer) OnboardWithUSB(ctx context.Context,
-	configuration *v1.DeviceConfiguration) (*empty.Empty, error) {
+	configuration *v1.DeviceConfiguration) (*emptypb.Empty, error) {
 	log.Println("Checking activation status of  device  ...")
 
 	if o.isContainerUp == false {
-		return &empty.Empty{}, status.New(codes.Internal, "Try again later, since edge core runtime is not ready !: ").Err()
+		return &emptypb.Empty{}, status.New(codes.Internal, "Try again later, since edge core runtime is not ready !: ").Err()
 	}
 
 	val, _ := o.parentApp.Clients.RestClient.Onboarded()
 
 	if val == true {
 		log.Println("Device is already onboarded, skipping given config!")
-		return &empty.Empty{}, status.New(codes.Internal, "Device is already onboarded !: ").Err()
+		return &emptypb.Empty{}, status.New(codes.Internal, "Device is already onboarded !: ").Err()
 	}
 
 	_, err := o.ApplyConfiguration(ctx, configuration)
 	if err != nil {
-		return &empty.Empty{}, status.New(codes.Internal, "Applying Configurations failed: "+err.Error()).Err()
+		return &emptypb.Empty{}, status.New(codes.Internal, "Applying Configurations failed: "+err.Error()).Err()
 	}
 
 	log.Println("Activating device  ...")
@@ -60,17 +61,17 @@ func (o *OnboardServer) OnboardWithUSB(ctx context.Context,
 	res, err := o.parentApp.Clients.RestClient.Activate(configuration)
 	if res == false {
 		log.Println("Device Activation failed ...")
-		return &empty.Empty{}, status.New(codes.Internal, "Activation failed: "+err.Error()).Err()
+		return &emptypb.Empty{}, status.New(codes.Internal, "Activation failed: "+err.Error()).Err()
 	}
 	log.Println("Device Activation successful...")
 	o.SetOnboardingStatus(ctx, &v1.OnboardingStatus{IsOnboarded: true})
-	return &empty.Empty{}, status.New(codes.OK, "fine").Err()
+	return &emptypb.Empty{}, status.New(codes.OK, "fine").Err()
 }
 
 // ApplyConfiguration calls all required IEDK services to perform configurations for onboarding.
 func (o *OnboardServer) ApplyConfiguration(ctx context.Context, configuration *v1.DeviceConfiguration) (
-	*empty.Empty, error) {
-	void := &empty.Empty{}
+	*emptypb.Empty, error) {
+	void := &emptypb.Empty{}
 	log.Println("ApplyConfiguration enter.")
 	o.lock()
 	defer o.unLock()
@@ -117,7 +118,7 @@ func (o *OnboardServer) unLock() {
 }
 
 // SetOnboardingStatus  sets the information of  device's onboarding status and changes led states.
-func (o *OnboardServer) SetOnboardingStatus(ctx context.Context, onboardingStatus *v1.OnboardingStatus) (*empty.Empty,
+func (o *OnboardServer) SetOnboardingStatus(ctx context.Context, onboardingStatus *v1.OnboardingStatus) (*emptypb.Empty,
 	error) {
 	log.Println("SetOnboardingStatus enter.")
 	o.lock()
@@ -135,15 +136,15 @@ func (o *OnboardServer) SetOnboardingStatus(ctx context.Context, onboardingStatu
 			log.Println("Listener Update routine leave.")
 		}()
 		log.Println("SetOnboardingStatus leave.")
-		return &empty.Empty{}, status.New(codes.OK, "Onboard Status has been set successfully").Err()
+		return &emptypb.Empty{}, status.New(codes.OK, "Onboard Status has been set successfully").Err()
 	}
 	log.Println("SetOnboardingStatus leave.")
-	return &empty.Empty{}, status.New(codes.InvalidArgument, "Setting onboard status failed").Err()
+	return &emptypb.Empty{}, status.New(codes.InvalidArgument, "Setting onboard status failed").Err()
 }
 
 // ListenOnboardState Implementation of RPC method given Onboard proto file When a client calls this once, all new
-//onboarding states delivered until client is closed.
-func (o *OnboardServer) ListenOnboardState(e *empty.Empty, listener v1.OnboardService_ListenOnboardStateServer) error {
+// onboarding states delivered until client is closed.
+func (o *OnboardServer) ListenOnboardState(e *emptypb.Empty, listener v1.OnboardService_ListenOnboardStateServer) error {
 	listener.Send(o.status) // initial message for the first time connected client (retained like in MQTT )
 
 	linfo := createNewListenerInfo(listener)

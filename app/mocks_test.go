@@ -2,14 +2,13 @@ package app
 
 import (
 	"context"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"onboardservice/internal/system"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/any"
-
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -86,19 +85,19 @@ type mockNtp struct {
 	mock.Mock
 }
 
-func (m *mockNtp) SetNtpServer(ctx context.Context, in *v1.Ntp, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (m *mockNtp) SetNtpServer(ctx context.Context, in *v1.Ntp, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	args := m.Called(in)
-	return &empty.Empty{}, args.Error(1)
+	return &emptypb.Empty{}, args.Error(1)
 
 }
 
-func (m *mockNtp) GetNtpServer(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*v1.Ntp, error) {
+func (m *mockNtp) GetNtpServer(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*v1.Ntp, error) {
 	args := m.Called(in)
 	return &v1.Ntp{}, args.Error(1)
 
 }
 
-func (m *mockNtp) GetStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*v1.Status, error) {
+func (m *mockNtp) GetStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*v1.Status, error) {
 	args := m.Called(in)
 	return &v1.Status{}, args.Error(1)
 
@@ -108,15 +107,15 @@ type mockSystem struct {
 	mock.Mock
 }
 
-func (m mockSystem) HardReset(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (m mockSystem) HardReset(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	panic("implement me")
 }
 
-func (m mockSystem) GetCustomSettings(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*any.Any, error) {
+func (m mockSystem) GetCustomSettings(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*anypb.Any, error) {
 	panic("implement me")
 }
 
-func (m mockSystem) ApplyCustomSettings(ctx context.Context, in *any.Any, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (m mockSystem) ApplyCustomSettings(ctx context.Context, in *anypb.Any, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	panic("implement me")
 }
 
@@ -124,39 +123,39 @@ func (m mockSystem) GetLogFile(ctx context.Context, in *v1.LogRequest, opts ...g
 	panic("implement me")
 }
 
-func (m mockSystem) RestartDevice(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (m mockSystem) RestartDevice(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	args := m.Called(in)
-	return &empty.Empty{}, args.Error(1)
+	return &emptypb.Empty{}, args.Error(1)
 }
 
-func (m mockSystem) ShutdownDevice(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (m mockSystem) ShutdownDevice(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	args := m.Called(in)
-	return &empty.Empty{}, args.Error(1)
+	return &emptypb.Empty{}, args.Error(1)
 }
 
-func (m mockSystem) FactoryReset(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (m mockSystem) FactoryReset(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	args := m.Called(in)
-	return &empty.Empty{}, args.Error(1)
+	return &emptypb.Empty{}, args.Error(1)
 }
 
-func (m mockSystem) GetModelNumber(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*v1.ModelNumber, error) {
+func (m mockSystem) GetModelNumber(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*v1.ModelNumber, error) {
 	args := m.Called(in)
 	return &v1.ModelNumber{
 		ModelNumber: "ipc227e",
 	}, args.Error(1)
 }
 
-func (m mockSystem) GetFirmwareInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*v1.FirmwareInfo, error) {
+func (m mockSystem) GetFirmwareInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*v1.FirmwareInfo, error) {
 	args := m.Called(in)
 	return &v1.FirmwareInfo{Version: "v1.0.0"}, args.Error(1)
 }
 
-func (m mockSystem) GetResourceStats(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*v1.Stats, error) {
+func (m mockSystem) GetResourceStats(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*v1.Stats, error) {
 	args := m.Called(in)
 	return &v1.Stats{}, args.Error(1)
 }
 
-func (m mockSystem) GetLimits(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*v1.Limits, error) {
+func (m mockSystem) GetLimits(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*v1.Limits, error) {
 	args := m.Called(in)
 	return &v1.Limits{}, args.Error(1)
 }
@@ -165,7 +164,7 @@ type mockLed struct {
 	mock.Mock
 }
 
-func (m *mockLed) ResetAll(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (m *mockLed) ResetAll(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	args := m.Called(ctx, in)
 	return nil, args.Error(1)
 }
@@ -185,7 +184,7 @@ func (m *mockedgeCoreRuntime) Onboarded() (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *mockNetwork) GetAllInterfaces(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*v1.NetworkSettings, error) {
+func (m *mockNetwork) GetAllInterfaces(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*v1.NetworkSettings, error) {
 	panic("implement me")
 	args := m.Called(ctx, in)
 	return &v1.NetworkSettings{}, args.Error(1)
@@ -199,7 +198,7 @@ func (m *mockNetwork) GetInterfaceWithLabel(ctx context.Context, in *v1.NetworkI
 	panic("implement me")
 }
 
-func (m *mockNetwork) ApplySettings(ctx context.Context, in *v1.NetworkSettings, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (m *mockNetwork) ApplySettings(ctx context.Context, in *v1.NetworkSettings, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	args := m.Called(ctx, in)
-	return &empty.Empty{}, args.Error(1)
+	return &emptypb.Empty{}, args.Error(1)
 }
