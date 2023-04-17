@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Siemens AG
+ * Copyright (c) 2023 Siemens AG
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -28,8 +28,9 @@ message Onboarding  {
     string  platformId =12;
     bool  isActivationConfirmed =13;
     string  deviceRole =14;
-   }
-   
+}
+
+
 // Security section in IEM Onboarding JSON file.
 message Device{
     siemens.iedge.dmapi.network.v1.NetworkSettings Network=1;
@@ -89,10 +90,10 @@ message OnboardingStatus{
 // protoc  generates both client and server instance for this Service.
 // GRPC Status codes : https://developers.google.com/maps-booking/reference/grpc-api/status_codes .
 service OnboardService {
-    
+
     // Starts onboarding sequence,applies  all settings via ApplyConfiguration() and finally calls  EdgeCoreRuntime REST API to onboard the device.
     rpc OnboardWithUSB(DeviceConfiguration) returns(google.protobuf.Empty);
-   
+
     // Applies all settings. Does not call EdgeCoreRuntime REST API.Applicable for UI Onboarding.
     rpc ApplyConfiguration(DeviceConfiguration) returns(google.protobuf.Empty);
 
@@ -101,5 +102,5 @@ service OnboardService {
 
     // Server stream for onboarding status changes.
     rpc  ListenOnboardState(google.protobuf.Empty) returns(stream OnboardingStatus);
-  
+
 }

@@ -59,7 +59,7 @@ dep: ## Get the dependencies
 
 server: dep ## Build the binary file for server
 	$(info Building server...)
-	@go build -i -v -ldflags=$(LD_FLAGS) -o $(SERVER_OUT) $(SERVER_PKG_BUILD)
+	@go build -v -ldflags=$(LD_FLAGS) -o $(SERVER_OUT) $(SERVER_PKG_BUILD)
 	$(info Built server at $(SERVER_OUT) )
 
 clean: ## Remove previous builds
@@ -68,7 +68,7 @@ clean: ## Remove previous builds
 
 .PHONY: deb
 deb:	## Build Debian package (deb)
-	@goreleaser -f "${PROJECT_ROOT}build/package/.goreleaser.yml"  --snapshot --skip-publish --rm-dist
+	@goreleaser -f "${PROJECT_ROOT}build/package/.goreleaser.yml"  --snapshot --skip-publish --clean
 
 
 # Absolutely awesome: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html

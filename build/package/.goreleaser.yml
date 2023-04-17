@@ -39,7 +39,7 @@ nfpms:
   homepage: https://github.com/industrial-edge/device-kit-onboard-service
   maintainer: https://github.com/industrial-edge/device-kit-onboard-service
   description: OnboardService is gRPC based edge core activator
-  license: Copyright (c) 2022 Siemens AG
+  license: Copyright (c) 2023 Siemens AG
 
   # Packages to be generated.
   formats:
