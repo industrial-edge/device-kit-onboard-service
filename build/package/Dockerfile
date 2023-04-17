@@ -1,18 +1,16 @@
-FROM golang:1.19.3
+FROM golang:1.20.1
 
-# Install protobuf from source
-RUN apt-get update && \
-    apt-get -y install git unzip build-essential autoconf libtool
-RUN git clone --depth 1 --branch v21.9 https://github.com/google/protobuf.git && \
-    cd protobuf && \
-    ./autogen.sh && \
-    ./configure && \
-    make && \
-    make install && \
-    ldconfig && \
-    make clean && \
-    cd .. && \
-    rm -r protobuf
+## Install unzip and jq
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    unzip \
+    jq
+
+# Install protobuf from releas page
+RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && VERSION=22.0 \
+    && curl -LO $PB_REL/download/v$VERSION/protoc-$VERSION-linux-x86_64.zip \
+    && unzip protoc-$VERSION-linux-x86_64.zip -d $HOME/.local \
+    && export PATH="$PATH:$HOME/.local/bin" \
+    && echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
 
 # Install LLVM as default compiler, for memory sanitizer
 
@@ -22,9 +20,6 @@ RUN curl -sS https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
 
 ## Add LLVM apt repository
 RUN echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-5.0 main" | tee -a /etc/apt/sources.list
-
-## Install jq
-RUN apt-get install -y --no-install-recommends jq
 
 ## Install clang from LLVM repository
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -48,12 +43,9 @@ RUN mkdir -p /progs && \
     echo 'export PATH=$PATH:/opt/sonar-scanner/bin' >> ~/.bashrc && \
     . ~/.bashrc
 
-
 # JFrog Client
-RUN curl -L \
-    --request GET  "https://jfrog.bintray.com/jfrog-cli-go/1.30.4/jfrog-cli-linux-amd64/jfrog" \
-    --output /usr/bin/jfrog && \
-    chmod u+x /usr/bin/jfrog
+RUN curl -fL https://getcli.jfrog.io/v2 | sh && \
+    mv jfrog /usr/bin/jfrog
 
 # Install Deb/Rpm packaging tool 'goreleaser'
 RUN echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | tee /etc/apt/sources.list.d/goreleaser.list
