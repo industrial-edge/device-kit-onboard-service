@@ -1,45 +1,39 @@
-FROM golang:1.20.1
+FROM golang:1.20.4
 
 ## Install unzip and jq
+## Install lsb-release wget software-properties-common gnupg (These are releated with llvm) - for memory sanitizer tests
 RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
-    jq
+    jq \
+    lsb-release \
+    wget \
+    software-properties-common \
+    gnupg
 
 # Install protobuf from releas page
-RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && VERSION=22.0 \
+RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && VERSION=23.0 \
     && curl -LO $PB_REL/download/v$VERSION/protoc-$VERSION-linux-x86_64.zip \
     && unzip protoc-$VERSION-linux-x86_64.zip -d $HOME/.local \
     && export PATH="$PATH:$HOME/.local/bin" \
     && echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
 
 # Install LLVM as default compiler, for memory sanitizer
-
-## Add apt key for LLVM repository
-#RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-RUN curl -sS https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-
-## Add LLVM apt repository
-RUN echo "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-5.0 main" | tee -a /etc/apt/sources.list
-
-## Install clang from LLVM repository
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    apt-utils \
-    apt-transport-https \
-    clang \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+ENV LLVM_VERSION 15
+RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh ${LLVM_VERSION}
 
 ## Set Clang as default CC
-ENV set_clang /etc/profile.d/set-clang-cc.sh
-RUN echo "export CC=clang-5.0" | tee -a ${set_clang} && chmod a+x ${set_clang}
+
+RUN echo "export CC=clang-${LLVM_VERSION}" >> ~/.bashrc && \
+    . ~/.bashrc
 
 # Sonar Scanner
+ENV SONAR_SCANNER_VERSION 4.8.0.2856
 RUN mkdir -p /progs && \
     # SonarScanner
     cd /progs && \
-    wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.3.0.2102-linux.zip && \
-    unzip sonar-scanner-cli-4.3.0.2102-linux.zip && \
-    mv sonar-scanner-4.3.0.2102-linux /opt/sonar-scanner && \
+    wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux.zip && \
+    unzip sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux.zip && \
+    mv sonar-scanner-${SONAR_SCANNER_VERSION}-linux /opt/sonar-scanner && \
     echo 'export PATH=$PATH:/opt/sonar-scanner/bin' >> ~/.bashrc && \
     . ~/.bashrc
 
