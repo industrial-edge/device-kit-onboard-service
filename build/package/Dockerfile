@@ -1,4 +1,4 @@
-FROM golang:1.20.4
+FROM golang:1.20.6-bullseye
 
 ## Install unzip and jq
 ## Install lsb-release wget software-properties-common gnupg (These are releated with llvm) - for memory sanitizer tests
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg
 
 # Install protobuf from releas page
-RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && VERSION=23.0 \
+RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && VERSION=23.4 \
     && curl -LO $PB_REL/download/v$VERSION/protoc-$VERSION-linux-x86_64.zip \
     && unzip protoc-$VERSION-linux-x86_64.zip -d $HOME/.local \
     && export PATH="$PATH:$HOME/.local/bin" \
