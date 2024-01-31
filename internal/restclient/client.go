@@ -37,6 +37,7 @@ type EdgeCoreClient struct {
 func NewClient(baseurl string) *EdgeCoreClient {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		DisableKeepAlives: true,
 	}
 	cli := &http.Client{Transport: tr}
 	return &EdgeCoreClient{
@@ -116,6 +117,10 @@ func (hc *EdgeCoreClient) Onboarded() (bool, error) {
 	if response != nil {
 		log.Println("HTTP Response :", response.StatusCode)
 	}
+	if err == nil {
+		defer response.Body.Close()
+	}
 
+	defer hc.client.CloseIdleConnections()
 	return retVal, err
 }
