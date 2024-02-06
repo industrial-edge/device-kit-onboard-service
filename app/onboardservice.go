@@ -155,9 +155,9 @@ func (app *MainApp) StartApp() {
 		onboardStatus, err := app.Clients.RestClient.Onboarded()
 		log.Printf("onboard status check :  error value : %v", err)
 		for err != nil {
+			time.Sleep(10 * time.Second)
 			onboardStatus, err = app.Clients.RestClient.Onboarded()
 			log.Printf("error : %v", err)
-			time.Sleep(10 * time.Second)
 		}
 		app.serverInstance.isContainerUp = true
 		app.serverInstance.status.IsOnboarded = onboardStatus
