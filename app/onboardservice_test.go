@@ -3,13 +3,14 @@ package app
 import (
 	"context"
 	"errors"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -34,7 +35,7 @@ func (suite *TestSuite) SetupSuite() {
 	os.Remove("/tmp/temp.sock")
 	suite.app = CreateServiceApp(&MockClientFactory{})
 	suite.app.Clients = suite.mockClients
-	suite.app.serverInstance.isContainerUp = true
+	suite.app.serverInstance.isContainerAccessible = true
 	initMocks(suite)
 
 	suite.ml.On("ApplyLedAction", mock.Anything,
@@ -106,14 +107,14 @@ func (suite *TestSuite) TestOnboardServer_OnboardWithUSB() {
 
 	suite.mpi.On("Activate", mock.Anything).
 		Return(true, nil).Once()
-	suite.mpi.On("Onboarded").Return(false, nil).Once()
+	suite.mpi.On("Onboarded").Return(false, true).Once()
 	_, err := suite.app.serverInstance.OnboardWithUSB(context.Background(), deviceConfig)
 	suite.Nil(err, "apply test failed", err)
 
 }
 
 func (suite *TestSuite) TestOnboardServer_OnboardWithUSB_FailActivate() {
-	suite.mpi.On("Onboarded").Return(false, nil).Once()
+	suite.mpi.On("Onboarded").Return(false, true).Once()
 	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
 		nil).Once()
 	suite.mpi.On("Activate", mock.Anything).
@@ -126,7 +127,7 @@ func (suite *TestSuite) TestOnboardServer_OnboardWithUSB_FailActivate() {
 
 }
 func (suite *TestSuite) TestOnboardServer_OnboardWithUSB_AlreadyOnboardedCase() {
-	suite.mpi.On("Onboarded").Return(true, nil).Once()
+	suite.mpi.On("Onboarded").Return(true, true).Once()
 
 	_, err2 := suite.app.serverInstance.OnboardWithUSB(context.Background(), deviceConfig)
 	suite.NotNil(err2, "apply test failed", err2)
@@ -157,9 +158,9 @@ func (suite *TestSuite) TestOnboardServer_CreateHelper() {
 
 func (suite *TestSuite) TestOnboardServer_StartApp() {
 	//first call should return error
-	suite.mpi.On("Onboarded").Return(false, errors.New("virtual error")).Once()
+	suite.mpi.On("Onboarded").Return(false, false).Once()
 	//second call no error
-	suite.mpi.On("Onboarded").Return(false, nil).Once()
+	suite.mpi.On("Onboarded").Return(false, true).Once()
 	suite.app.StartApp()
 }
 

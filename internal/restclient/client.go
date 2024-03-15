@@ -1,17 +1,18 @@
 /*
- * Copyright (c) 2021 Siemens AG
- * Licensed under the MIT license
- * See LICENSE file in the top-level directory
- */
+* Copyright (c) 2021 Siemens AG
+* Licensed under the MIT license
+* See LICENSE file in the top-level directory
+*/
 
 package restclient
 
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -20,10 +21,18 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// ErrResponse implements error response when EdgeCoreClient get an error
+type ErrResponse struct {
+	Errors []struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"errors"`
+}
+
 // EdgeCoreRuntimeRest  API interface
 type EdgeCoreRuntimeRest interface {
 	Activate(configuration *v1.DeviceConfiguration) (bool, error)
-	Onboarded() (bool, error)
+	Onboarded() (bool, bool)
 }
 
 // EdgeCoreClient implements EdgeCoreRuntimeRest interface.
@@ -37,7 +46,6 @@ type EdgeCoreClient struct {
 func NewClient(baseurl string) *EdgeCoreClient {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		DisableKeepAlives: true,
 	}
 	cli := &http.Client{Transport: tr}
 	return &EdgeCoreClient{
@@ -45,7 +53,6 @@ func NewClient(baseurl string) *EdgeCoreClient {
 		onboardCheckURL: baseurl + "/v1",
 		client:          cli,
 	}
-
 }
 
 // Activate allows the device activation to EdgeCoreRuntime by delivering onboarding configuration.
@@ -82,7 +89,7 @@ func (hc *EdgeCoreClient) Activate(configuration *v1.DeviceConfiguration) (bool,
 		return false, err
 	}
 	//Parse response.
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	fmt.Println(string(body))
 	if res.StatusCode >= 200 && res.StatusCode < 400 {
 		log.Println("onboard succeed")
@@ -99,28 +106,44 @@ func (hc *EdgeCoreClient) Activate(configuration *v1.DeviceConfiguration) (bool,
 	return false, err
 }
 
-// Onboarded function answers : Is the device  onboarded or not?
-func (hc *EdgeCoreClient) Onboarded() (bool, error) {
-	response, err := hc.client.Get(hc.onboardCheckURL)
+// GetHttpErrorMessage consumes http response body stream and creates proper error message
+func GetHttpErrorMessage(response *http.Response) string {
+	var errResponse ErrResponse
+	var errMessage string
 
-	retVal := false
-	if err != nil {
-		log.Println("Onboard Status Check call failed:", err)
-
-	} else if response.StatusCode >= 200 && response.StatusCode < 400 {
-		retVal = true
-	} else if response.StatusCode == 531 {
-		retVal = false
+	body, _ := io.ReadAll(response.Body)
+	if err := json.Unmarshal(body, &errResponse); err != nil {
+		errMessage = "Unexpected error, error response can not be parsed"
 	} else {
-		err = errors.New("Service not available")
-	}
-	if response != nil {
-		log.Println("HTTP Response :", response.StatusCode)
-	}
-	if err == nil {
-		defer response.Body.Close()
+		errMessage = errResponse.Errors[0].Message
 	}
 
-	defer hc.client.CloseIdleConnections()
-	return retVal, err
+	return fmt.Sprintf("HTTP Response: %d - %s", response.StatusCode, errMessage)
+}
+
+// Onboarded checks the onboarding status of the device and edge accessibility of edge iot core runtime
+func (hc *EdgeCoreClient) Onboarded() (isOnboarded bool, isContainerAccessible bool) {
+	response, err := hc.client.Get(hc.onboardCheckURL)
+	if err != nil {
+		log.Println("Failed to check onboard status: ", err)
+		isOnboarded, isContainerAccessible = false, false
+	} else {
+		defer response.Body.Close()
+
+		switch {
+		case response.StatusCode >= 200 && response.StatusCode < 400:
+			isOnboarded, isContainerAccessible = true, true
+			log.Printf("HTTP Response: %d - Onboarded check successful", response.StatusCode)
+
+		case response.StatusCode == 531:
+			isOnboarded, isContainerAccessible = false, true
+			log.Printf("HTTP Response: %d - Device not onboarded", response.StatusCode)
+
+		default:
+			isOnboarded, isContainerAccessible = false, false
+			log.Println(GetHttpErrorMessage(response))
+		}
+	}
+
+	return isOnboarded, isContainerAccessible
 }
