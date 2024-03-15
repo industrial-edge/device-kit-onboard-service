@@ -179,9 +179,9 @@ func (m *mockedgeCoreRuntime) Activate(configuration *v1.DeviceConfiguration) (b
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *mockedgeCoreRuntime) Onboarded() (bool, error) {
+func (m *mockedgeCoreRuntime) Onboarded() (bool, bool) {
 	args := m.Called()
-	return args.Bool(0), args.Error(1)
+	return args.Bool(0), args.Bool(1)
 }
 
 func (m *mockNetwork) GetAllInterfaces(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*v1.NetworkSettings, error) {

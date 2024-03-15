@@ -2,7 +2,7 @@ package restclient
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
@@ -12,7 +12,9 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const PORT = "3131"
+const (
+	PORT = "3131"
+)
 
 type TestSuite struct {
 	suite.Suite
@@ -75,7 +77,7 @@ func (suite *TestSuite) Test_TryActivate() {
 		Proxies: nil,
 	}
 
-	client := NewClient("http://localhost:" + PORT)
+	client := NewClient(fmt.Sprintf("http://localhost:%s", PORT))
 	val, err := client.Activate(deviceConfig)
 	suite.True(val)
 	suite.Nil(err)
@@ -83,22 +85,38 @@ func (suite *TestSuite) Test_TryActivate() {
 }
 
 func (suite *TestSuite) Test_CheckOnboardedWithMock() {
-	client := NewClient("http://localhost:" + PORT)
-	val, err := client.Onboarded()
-	suite.True(val)
-	suite.Nil(err)
+	client := NewClient(fmt.Sprintf("http://localhost:%s", PORT))
+	isOnboarded, isContainerAccessible := client.Onboarded()
+	suite.True(isOnboarded)
+	suite.True(isContainerAccessible)
 }
-func (suite *TestSuite) Test_OnboardedWihtFailingRoute() {
-	client := NewClient("http://localhost:" + PORT + "/123123")
-	val, err := client.Onboarded()
-	suite.False(val)
-	suite.NotNil(err)
+
+func (suite *TestSuite) Test_OnboardedWithInvalidPath() {
+	client := NewClient(fmt.Sprintf("http://localhost:%s/invalid-path", PORT))
+	isOnboarded, isContainerAccessible := client.Onboarded()
+	suite.False(isOnboarded)
+	suite.False(isContainerAccessible)
 }
-func (suite *TestSuite) Test_OnboardedWithInvalidServer() {
-	client := NewClient("http://localhost:31311/INVALIDADRESS")
-	val, err := client.Onboarded()
-	suite.False(val)
-	suite.NotNil(err)
+
+func (suite *TestSuite) Test_OnboardedFailingWith503StatusCode() {
+	client := NewClient(fmt.Sprintf("http://localhost:%s/response-status-code/503", PORT))
+	isOnboarded, isContainerAccessible := client.Onboarded()
+	suite.False(isOnboarded)
+	suite.False(isContainerAccessible)
+}
+
+func (suite *TestSuite) Test_OnboardedWith531StatusCode() {
+	client := NewClient(fmt.Sprintf("http://localhost:%s/response-status-code/531", PORT))
+	isOnboarded, isContainerAccessible := client.Onboarded()
+	suite.False(isOnboarded)
+	suite.True(isContainerAccessible)
+}
+
+func (suite *TestSuite) Test_OnboardedWithJSONResponse() {
+	client := NewClient(fmt.Sprintf("http://localhost:%s/response-status-code/401", PORT))
+	isOnboarded, isContainerAccessible := client.Onboarded()
+	suite.False(isOnboarded)
+	suite.False(isContainerAccessible)
 }
 
 type mockServer struct {
@@ -112,25 +130,27 @@ func (m *mockServer) Start() {
 		WriteTimeout: 10 * time.Second,
 	}
 	m.server = s
-	http.HandleFunc("/v1/activate", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		body, err := ioutil.ReadAll(r.Body)
-		if err == nil {
-			fmt.Fprintf(w, "Hello Request was, %q", string(body))
-		}
 
-	})
-	http.HandleFunc("/v1", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		body, err := ioutil.ReadAll(r.Body)
-		if err == nil {
-			fmt.Fprintf(w, "Hello Request was, %q", string(body))
-		}
+	http.HandleFunc("/v1/activate", createHandler(200))
+	http.HandleFunc("/v1", createHandler(200))
+	http.HandleFunc("/response-status-code/503/v1", createHandler(503))
+	http.HandleFunc("/response-status-code/531/v1", createHandler(531))
+	http.HandleFunc("/response-status-code/401/v1", createHandler(401))
 
-	})
 	fmt.Printf("Starting server for testing HTTP POST...\n")
 	s.ListenAndServe()
 }
+
+func createHandler(status int) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
+		body, err := io.ReadAll(r.Body)
+		if err == nil {
+			fmt.Fprintf(w, "Hello Request was, %q", string(body))
+		}
+	}
+}
+
 func (m *mockServer) Stop() error {
 	return m.server.Close()
 }

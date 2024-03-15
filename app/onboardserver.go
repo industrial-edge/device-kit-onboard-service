@@ -1,17 +1,18 @@
 /*
- * Copyright (c) 2022 Siemens AG
- * Licensed under the MIT license
- * See LICENSE file in the top-level directory
- */
+* Copyright (c) 2022 Siemens AG
+* Licensed under the MIT license
+* See LICENSE file in the top-level directory
+*/
 
 package app
 
 import (
 	"context"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"sync"
+
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -24,7 +25,7 @@ type OnboardServer struct {
 	status    *v1.OnboardingStatus
 	parentApp *MainApp
 	sync.Mutex
-	isContainerUp bool
+	isContainerAccessible bool
 }
 
 const (
@@ -40,13 +41,13 @@ func (o *OnboardServer) OnboardWithUSB(ctx context.Context,
 	configuration *v1.DeviceConfiguration) (*emptypb.Empty, error) {
 	log.Println("Checking activation status of  device  ...")
 
-	if o.isContainerUp == false {
+	if !o.isContainerAccessible {
 		return &emptypb.Empty{}, status.New(codes.Internal, "Try again later, since edge core runtime is not ready !: ").Err()
 	}
 
-	val, _ := o.parentApp.Clients.RestClient.Onboarded()
+	onboardedStatus, _ := o.parentApp.Clients.RestClient.Onboarded()
 
-	if val == true {
+	if onboardedStatus {
 		log.Println("Device is already onboarded, skipping given config!")
 		return &emptypb.Empty{}, status.New(codes.Internal, "Device is already onboarded !: ").Err()
 	}
@@ -59,7 +60,7 @@ func (o *OnboardServer) OnboardWithUSB(ctx context.Context,
 	log.Println("Activating device  ...")
 	//REST CALL TO EDGECORE
 	res, err := o.parentApp.Clients.RestClient.Activate(configuration)
-	if res == false {
+	if !res {
 		log.Println("Device Activation failed ...")
 		return &emptypb.Empty{}, status.New(codes.Internal, "Activation failed: "+err.Error()).Err()
 	}

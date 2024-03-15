@@ -1,8 +1,8 @@
 /*
- * Copyright (c) 2022 Siemens AG
- * Licensed under the MIT license
- * See LICENSE file in the top-level directory
- */
+* Copyright (c) 2022 Siemens AG
+* Licensed under the MIT license
+* See LICENSE file in the top-level directory
+*/
 
 package app
 
@@ -84,7 +84,7 @@ func (app MainApp) StopGRPC() {
 func (app MainApp) StartGRPC(args []string) error {
 	const message string = `ERROR: Could not start monitor with bad arguments! \n  
 		Sample usage:\n  ./xxxservice unix /tmp/iedk/xxx.sock \n 
-		  ./xxxservice tcp localhost:50006`
+		./xxxservice tcp localhost:50006`
 
 	if len(args) != 3 {
 		fmt.Println(message)
@@ -150,18 +150,24 @@ func chownSocket(address string, userName string, groupName string) error {
 
 // StartApp starts things up
 func (app *MainApp) StartApp() {
+	log.Println("Initializing App")
 
 	go func() {
-		onboardStatus, err := app.Clients.RestClient.Onboarded()
-		log.Printf("onboard status check :  error value : %v", err)
-		for err != nil {
-			time.Sleep(10 * time.Second)
-			onboardStatus, err = app.Clients.RestClient.Onboarded()
-			log.Printf("error : %v", err)
-		}
-		app.serverInstance.isContainerUp = true
-		app.serverInstance.status.IsOnboarded = onboardStatus
-	}()
+		for {
+			onboardStatus, isContainerAccessible := app.Clients.RestClient.Onboarded()
+			if isContainerAccessible {
+				log.Printf("Onboard status check successful. Onboarded: %v", onboardStatus)
 
-	log.Println("Initializing App")
+				// Onboarded successfully, update the status
+				app.serverInstance.isContainerAccessible = isContainerAccessible
+				app.serverInstance.status.IsOnboarded = onboardStatus
+
+				// Break out of the loop, as the onboard check is successful
+				break
+			}
+
+			// Sleep for a while before the next onboard check
+			time.Sleep(10 * time.Second)
+		}
+	}()
 }
