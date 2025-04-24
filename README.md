@@ -9,6 +9,21 @@ Purpose of these repositories is to share reference implementation of IE Device 
 
 Onboard Service is a gRPC & Go based Edge Core activator. This service communicates with all other services and provides the necessary configurations for the Edge Device to successfully onboard to Industrial Edge Management system.
 
+```bash
+    // Starts onboarding sequence,applies  all settings via ApplyConfiguration() and finally calls  EdgeCoreRuntime REST API to onboard the device.
+    rpc OnboardWithUSB(DeviceConfiguration) returns(google.protobuf.Empty);
+   
+    // Applies all settings. Does not call EdgeCoreRuntime REST API.Applicable for UI Onboarding.
+    rpc ApplyConfiguration(DeviceConfiguration) returns(google.protobuf.Empty);
+
+    // Sets state for device onboard status.In Onboarding from UI, EdgeCoreRuntime calls this method to set the onboarding status.
+    rpc SetOnboardingStatus(OnboardingStatus) returns(google.protobuf.Empty);
+
+    // Server stream for onboarding status changes.
+    rpc  ListenOnboardState(google.protobuf.Empty) returns(stream OnboardingStatus);
+
+```
+
 ## Overview
 
 _Onboard Service_ is developed in the go programming language and gRPC. More information can be found [here](https://grpc.io/docs/). The Onboard service runs as a systemd service within the device that has a debian-based operating system.
