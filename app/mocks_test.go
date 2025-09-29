@@ -166,6 +166,17 @@ func (m mockSystem) GetLimits(ctx context.Context, in *emptypb.Empty, opts ...gr
 	return &v1.Limits{}, args.Error(1)
 }
 
+func (m mockSystem) UpdateHostname(ctx context.Context, in *v1.Hostname, opts ...grpc.CallOption) (*emptypb.Empty, error){
+	args := m.Called(in)
+	return &emptypb.Empty{}, args.Error(1)
+}
+
+func (m mockSystem) GetHostname(ctx context.Context, in *emptypb.Empty,opts ...grpc.CallOption) (*v1.Hostname, error){
+	args := m.Called(in)
+	return &v1.Hostname{}, args.Error(1)
+}
+
+
 type mockLed struct {
 	mock.Mock
 }
