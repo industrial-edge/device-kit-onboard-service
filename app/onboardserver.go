@@ -1,5 +1,5 @@
 /*
- * Copyright © Siemens 2020 - 2025. ALL RIGHTS RESERVED.
+ * Copyright © Siemens 2020 - 2026. ALL RIGHTS RESERVED.
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -52,6 +52,14 @@ func (o *OnboardServer) OnboardWithUSB(ctx context.Context,
 		return &emptypb.Empty{}, status.New(codes.Internal, "Device is already onboarded !: ").Err()
 	}
 
+	// Handle GSM configuration if present
+	if err := o.handleGSMConfiguration(ctx, configuration); err != nil {
+		return &emptypb.Empty{}, status.New(codes.Internal, "Applying GSM configuration failed: "+err.Error()).Err()
+	}
+
+	// Note: We do not rollback GSM connections on ApplyConfiguration failure because
+	// ApplyConfiguration is handled by the network service, and network service manages
+	// its own configuration state and rollback mechanisms internally.
 	_, err := o.ApplyConfiguration(ctx, configuration)
 	if err != nil {
 		return &emptypb.Empty{}, status.New(codes.Internal, "Applying Configurations failed: "+err.Error()).Err()
