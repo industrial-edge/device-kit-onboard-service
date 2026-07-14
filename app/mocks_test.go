@@ -176,6 +176,11 @@ func (m mockSystem) GetHostname(ctx context.Context, in *emptypb.Empty,opts ...g
 	return &v1.Hostname{}, args.Error(1)
 }
 
+func (m mockSystem) GetDeviceInfo(ctx context.Context, in *emptypb.Empty,opts ...grpc.CallOption) (*v1.DeviceInfo, error){
+	args := m.Called(in)
+	return &v1.DeviceInfo{}, args.Error(1)
+}
+
 
 type mockLed struct {
 	mock.Mock
