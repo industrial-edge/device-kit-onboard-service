@@ -1,5 +1,5 @@
 /*
- * Copyright © Siemens 2020 - 2025. ALL RIGHTS RESERVED.
+ * Copyright © Siemens 2020 - 2026. ALL RIGHTS RESERVED.
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -11,17 +11,14 @@ import (
 	"os/exec"
 )
 
-
-
 // Configurable Inteface handles configurations on the host services for onboarding.
 type Configurable interface {
 	DaemonReload(query string) bool
 }
 
-//Helper struct for host configurations
+// Helper struct for host configurations
 type Helper struct {
 }
-
 
 func (f *Helper) DaemonReload(query string) bool {
 	errDaemonReload := exec.Command("bash", "-c", query).Run()

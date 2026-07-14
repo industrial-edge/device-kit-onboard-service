@@ -1,5 +1,5 @@
 /*
- * Copyright © Siemens 2020 - 2025. ALL RIGHTS RESERVED.
+ * Copyright © Siemens 2020 - 2026. ALL RIGHTS RESERVED.
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -15,6 +15,8 @@ import (
 	"net"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"onboardservice/internal/system"
+
+	edgeutils "onboardservice/internal/utils"
 	"os"
 	"os/user"
 	"strconv"
@@ -34,10 +36,11 @@ type DeviceModelService interface {
 
 // MainApp application type
 type MainApp struct {
-	Clients        *ClientPack
-	serverInstance *OnboardServer
-	helper         system.Configurable
-	close          chan bool
+	Clients          *ClientPack
+	serverInstance   *OnboardServer
+	helper           system.Configurable
+	capabilityParser *DefaultCapabilityParser
+	close            chan bool
 }
 
 type listenerInfo struct {
@@ -57,11 +60,16 @@ func createNewListenerInfo(thelistener v1.OnboardService_ListenOnboardStateServe
 // CreateServiceApp creates main App with given clientpack factory
 func CreateServiceApp(factory ClientFactory) *MainApp {
 
+	fsOps := &edgeutils.OsFileSystemOperations{}
+	// Create capability parser instance using improved pattern
+	capParser := NewCapabilityParser(fsOps)
+
 	app := MainApp{
-		Clients:        factory.CreateClients(),
-		serverInstance: &OnboardServer{},
-		close:          make(chan bool),
-		helper:         factory.CreateHelper(),
+		Clients:          factory.CreateClients(),
+		serverInstance:   &OnboardServer{},
+		close:            make(chan bool),
+		helper:           factory.CreateHelper(),
+		capabilityParser: capParser,
 	}
 
 	server := OnboardServer{
@@ -74,7 +82,6 @@ func CreateServiceApp(factory ClientFactory) *MainApp {
 		Mutex:     sync.Mutex{},
 	}
 	app.serverInstance = &server
-
 	return &app
 }
 
