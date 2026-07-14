@@ -54,6 +54,26 @@ func (suite *TestSuite) SetupTest() {
 	initMocks(suite)
 }
 
+// waitForListenerCount polls until the listener count matches expected, or times out.
+func (suite *TestSuite) waitForListenerCount(expected int) {
+	deadline := time.After(2 * time.Second)
+	for {
+		suite.app.serverInstance.Mutex.Lock()
+		count := len(suite.app.serverInstance.listeners)
+		suite.app.serverInstance.Mutex.Unlock()
+		if count == expected {
+			return
+		}
+		select {
+		case <-deadline:
+			suite.Failf("timeout", "expected %d listeners, got %d", expected, count)
+			return
+		default:
+			time.Sleep(1 * time.Millisecond)
+		}
+	}
+}
+
 func initMocks(suite *TestSuite) {	
 	suite.mn = edgeutils.MockNtp{Mock: mock.Mock{}}
 	suite.mpi = mockedgeCoreRuntime{Mock: mock.Mock{}}
@@ -457,8 +477,8 @@ func (suite *TestSuite) TestOnboardServer_StartApp() {
 	// Cancel will stop the goroutine
 	cancel()
 
-	// Give time for cleanup
-	time.Sleep(100 * time.Millisecond)
+	// Wait for goroutine to fully exit
+	suite.app.wg.Wait()
 }
 
 func (suite *TestSuite) TestOnboardServer_StartApp_TickerSuccess() {
@@ -473,8 +493,8 @@ func (suite *TestSuite) TestOnboardServer_StartApp_TickerSuccess() {
 
 	suite.app.StartAppWithContext(ctx)
 
-	// Wait for 2 ticker intervals plus buffer
-	time.Sleep(2*onboardCheckInterval + 5*time.Second)
+	// Wait for goroutine to complete (3rd call returns true, goroutine exits)
+	suite.app.wg.Wait()
 
 	suite.app.serverInstance.Mutex.Lock()
 	isAccessible := suite.app.serverInstance.isContainerAccessible
@@ -483,10 +503,6 @@ func (suite *TestSuite) TestOnboardServer_StartApp_TickerSuccess() {
 
 	suite.True(isAccessible)
 	suite.True(isOnboarded)
-
-	// Cancel to cleanup
-	cancel()
-	time.Sleep(100 * time.Millisecond)
 }
 
 func (suite *TestSuite) TestOnboardServer_checkAndUpdateOnboardStatus_Success() {
@@ -2001,4 +2017,117 @@ func (suite *TestSuite) TestVerifyGatewayInterface_InValidConfigurationWithStati
 	err := suite.app.serverInstance.verifyGatewayInterface(config)
 	suite.NotNil(err, "Expected error when exactly one gateway interface is present")
 	suite.Contains(err.Error(), "gateway interface has static IP configuration but gateway is empty")
+}
+
+func (suite *TestSuite) TestCheckAndUpdateOnboardStatus_NotifiesExistingListeners() {
+	// Simulate bug scenario: device is onboarded, a listener connects before
+	// checkAndUpdateOnboardStatus runs, and expects to receive the correct status.
+
+	// Reset server status to initial state (as after reboot)
+	suite.app.serverInstance.status.IsOnboarded = false
+	suite.app.serverInstance.isContainerAccessible = false
+
+	// Create and register a listener (simulates client connecting before status check)
+	doneChannel := make(chan struct{})
+	listener := &MockListener{
+		receivedStatus: nil,
+		context:        &mockContext{doneChannel: doneChannel},
+		doneChannel:    doneChannel,
+		sendCalled:     make(chan struct{}, 2),
+	}
+
+	go suite.app.serverInstance.ListenOnboardState(&emptypb.Empty{}, listener)
+
+	// Wait for initial Send to complete (deterministic sync instead of time.Sleep)
+	<-listener.sendCalled
+
+	// Verify listener got initial false status
+	suite.False(listener.getReceivedStatus().IsOnboarded,
+		"Listener should initially receive IsOnboarded=false")
+
+	// Wait for listener to be registered in the map
+	suite.waitForListenerCount(1)
+
+	// Mock REST client: device is onboarded and container accessible
+	suite.mpi.On("Onboarded").Return(true, true).Once()
+
+	// Run the status check (simulates the background goroutine completing)
+	result := suite.app.checkAndUpdateOnboardStatus()
+	suite.True(result)
+
+	// Wait for the async notification to be delivered
+	<-listener.sendCalled
+
+	// Verify listener received the updated status
+	suite.True(listener.getReceivedStatus().IsOnboarded,
+		"Existing listener should receive IsOnboarded=true after checkAndUpdateOnboardStatus")
+
+	// Cleanup
+	close(doneChannel)
+	suite.waitForListenerCount(0)
+}
+
+func (suite *TestSuite) TestCheckAndUpdateOnboardStatus_NotOnboarded_NotifiesListeners() {
+	// When device is NOT onboarded, listeners should still be notified with false.
+
+	suite.app.serverInstance.status.IsOnboarded = false
+	suite.app.serverInstance.isContainerAccessible = false
+
+	doneChannel := make(chan struct{})
+	listener := &MockListener{
+		receivedStatus: nil,
+		context:        &mockContext{doneChannel: doneChannel},
+		doneChannel:    doneChannel,
+		sendCalled:     make(chan struct{}, 2),
+	}
+
+	go suite.app.serverInstance.ListenOnboardState(&emptypb.Empty{}, listener)
+
+	// Wait for initial Send to complete
+	<-listener.sendCalled
+
+	// Wait for listener to be registered in the map
+	suite.waitForListenerCount(1)
+
+	// Mock REST client: container accessible but not onboarded
+	suite.mpi.On("Onboarded").Return(false, true).Once()
+
+	result := suite.app.checkAndUpdateOnboardStatus()
+	suite.True(result)
+
+	// Wait for the async notification to be delivered
+	<-listener.sendCalled
+
+	// Listener should receive false (device not onboarded)
+	suite.False(listener.getReceivedStatus().IsOnboarded,
+		"Listener should receive IsOnboarded=false when device is not onboarded")
+
+	close(doneChannel)
+	suite.waitForListenerCount(0)
+}
+
+func (suite *TestSuite) TestListenOnboardState_NewListenerGetsCurrentOnboardedStatus() {
+	// Directly tests the exact bug scenario: device is already onboarded,
+	// a new listener connects and should get isOnboarded=true on the first message.
+
+	suite.app.serverInstance.Mutex.Lock()
+	suite.app.serverInstance.status.IsOnboarded = true
+	suite.app.serverInstance.isContainerAccessible = true
+	suite.app.serverInstance.Mutex.Unlock()
+
+	doneChannel := make(chan struct{})
+	listener := &MockListener{
+		context:     &mockContext{doneChannel: doneChannel},
+		doneChannel: doneChannel,
+		sendCalled:  make(chan struct{}, 1),
+	}
+
+	go suite.app.serverInstance.ListenOnboardState(&emptypb.Empty{}, listener)
+	<-listener.sendCalled
+
+	suite.True(listener.getReceivedStatus().IsOnboarded,
+		"New listener should get IsOnboarded=true when device is already onboarded")
+
+	close(doneChannel)
+	suite.waitForListenerCount(0)
 }

@@ -41,7 +41,10 @@ func (o *OnboardServer) OnboardWithUSB(ctx context.Context,
 	configuration *v1.DeviceConfiguration) (*emptypb.Empty, error) {
 	log.Println("Checking activation status of  device  ...")
 
-	if !o.isContainerAccessible {
+	o.Mutex.Lock()
+	accessible := o.isContainerAccessible
+	o.Mutex.Unlock()
+	if !accessible {
 		return &emptypb.Empty{}, status.New(codes.Internal, "Try again later, since edge core runtime is not ready !: ").Err()
 	}
 
@@ -126,6 +129,23 @@ func (o *OnboardServer) unLock() {
 	log.Println("Unlocked")
 }
 
+// notifyListeners sends the given status to all registered stream listeners.
+func (o *OnboardServer) notifyListeners(onboardingStatus *v1.OnboardingStatus) {
+	go func() {
+		log.Println("Listener Update routine enter.")
+		o.Mutex.Lock()
+		currentListeners := make(map[int32]listenerInfo, len(o.listeners))
+		for k, v := range o.listeners {
+			currentListeners[k] = v
+		}
+		o.Mutex.Unlock()
+		for _, k := range currentListeners {
+			k.channel <- onboardingStatus
+		}
+		log.Println("Listener Update routine leave.")
+	}()
+}
+
 // SetOnboardingStatus  sets the information of  device's onboarding status and changes led states.
 func (o *OnboardServer) SetOnboardingStatus(ctx context.Context, onboardingStatus *v1.OnboardingStatus) (*emptypb.Empty,
 	error) {
@@ -133,17 +153,10 @@ func (o *OnboardServer) SetOnboardingStatus(ctx context.Context, onboardingStatu
 	o.lock()
 	defer o.unLock()
 	if onboardingStatus != nil {
-
-		//this routine updates the channel with new states for streaming
-		go func() {
-			log.Println("Listener Update routine enter.")
-			if len(o.listeners) > 0 {
-				for _, k := range o.listeners {
-					k.channel <- onboardingStatus
-				}
-			}
-			log.Println("Listener Update routine leave.")
-		}()
+		o.status.IsOnboarded = onboardingStatus.IsOnboarded
+		o.status.Message = onboardingStatus.Message
+		// NOTE: notifyListeners uses a goroutine, so it won't deadlock with the lock held here.
+		o.notifyListeners(onboardingStatus)
 		log.Println("SetOnboardingStatus leave.")
 		return &emptypb.Empty{}, status.New(codes.OK, "Onboard Status has been set successfully").Err()
 	}
@@ -154,7 +167,10 @@ func (o *OnboardServer) SetOnboardingStatus(ctx context.Context, onboardingStatu
 // ListenOnboardState Implementation of RPC method given Onboard proto file When a client calls this once, all new
 // onboarding states delivered until client is closed.
 func (o *OnboardServer) ListenOnboardState(e *emptypb.Empty, listener v1.OnboardService_ListenOnboardStateServer) error {
-	listener.Send(o.status) // initial message for the first time connected client (retained like in MQTT )
+	o.Mutex.Lock()
+	currentStatus := &v1.OnboardingStatus{IsOnboarded: o.status.IsOnboarded, Message: o.status.Message}
+	o.Mutex.Unlock()
+	listener.Send(currentStatus) // initial message for the first time connected client (retained like in MQTT )
 
 	linfo := createNewListenerInfo(listener)
 
