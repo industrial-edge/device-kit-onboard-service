@@ -41,6 +41,7 @@ type MainApp struct {
 	helper           system.Configurable
 	capabilityParser *DefaultCapabilityParser
 	close            chan bool
+	wg               sync.WaitGroup
 }
 
 type listenerInfo struct {
@@ -167,7 +168,9 @@ func (app *MainApp) StartApp() {
 func (app *MainApp) StartAppWithContext(ctx context.Context) {
 	log.Println("Initializing App - Starting onboard status monitoring")
 
+	app.wg.Add(1)
 	go func() {
+		defer app.wg.Done()
 		if app.checkAndUpdateOnboardStatus() {
 			log.Println("Onboard status monitoring completed successfully")
 			return
@@ -203,6 +206,7 @@ func (app *MainApp) checkAndUpdateOnboardStatus() bool {
 		app.serverInstance.isContainerAccessible = isContainerAccessible
 		app.serverInstance.status.IsOnboarded = onboardStatus
 		app.serverInstance.Mutex.Unlock()
+		app.serverInstance.notifyListeners(&v1.OnboardingStatus{IsOnboarded: onboardStatus})
 		return true
 	}
 	return false

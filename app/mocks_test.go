@@ -11,6 +11,7 @@ import (
 	"log"
 	v1 "onboardservice/api/siemens_iedge_dmapi_v1"
 	"onboardservice/internal/system"
+	"sync"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -28,12 +29,25 @@ type MockListener struct {
 	receivedStatus *v1.OnboardingStatus
 	context        context.Context
 	doneChannel    chan struct{}
+	mu             sync.Mutex
+	sendCalled     chan struct{}
 }
 
 func (m *MockListener) Send(onboardingStatus *v1.OnboardingStatus) error {
 	log.Println("MOCK RECEVIED STATUS :", onboardingStatus.IsOnboarded)
+	m.mu.Lock()
 	m.receivedStatus = onboardingStatus
+	m.mu.Unlock()
+	if m.sendCalled != nil {
+		m.sendCalled <- struct{}{}
+	}
 	return nil
+}
+
+func (m *MockListener) getReceivedStatus() *v1.OnboardingStatus {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.receivedStatus
 }
 
 func (m *MockListener) SetHeader(md metadata.MD) error {
