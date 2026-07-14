@@ -77,11 +77,11 @@ func (o *OnboardServer) ApplyConfiguration(ctx context.Context, configuration *v
 	o.lock()
 	defer o.unLock()
 
-	if err := o.configureNTP(ctx, configuration); err != nil {
+	if err := o.configureNetwork(ctx, configuration); err != nil {
 		log.Println(leaveMessage)
 		return void, err
 	}
-	if err := o.configureNetwork(ctx, configuration); err != nil {
+	if err := o.configureNTP(ctx, configuration); err != nil {
 		log.Println(leaveMessage)
 		return void, err
 	}

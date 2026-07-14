@@ -22,9 +22,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// Testify suite runner detected as race
-var testMutex sync.Mutex = sync.Mutex{}
-
 type TestSuite struct {
 	suite.Suite
 	mockClients *ClientPack
@@ -34,22 +31,20 @@ type TestSuite struct {
 	mNet        mockNetwork
 	mSys        mockSystem
 	app         *MainApp
+	mu          sync.Mutex
 }
 
 func (suite *TestSuite) SetupSuite() {
-
 	os.Remove("/tmp/temp.sock")
 	suite.app = CreateServiceApp(&MockClientFactory{})
 	suite.app.Clients = suite.mockClients
 	suite.app.serverInstance.isContainerAccessible = true
-	initMocks(suite)
-
-	suite.ml.On("ApplyLedAction", mock.Anything,
-		mock.Anything).Return(&emptypb.Empty{}, nil)
-
-	suite.ml.On("ResetAll", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil)
 }
+
 func (suite *TestSuite) SetupTest() {
+	suite.mu.Lock()
+	defer suite.mu.Unlock()
+	initMocks(suite)
 }
 
 func initMocks(suite *TestSuite) {
@@ -59,8 +54,6 @@ func initMocks(suite *TestSuite) {
 	suite.mNet = mockNetwork{Mock: mock.Mock{}}
 	suite.mSys = mockSystem{Mock: mock.Mock{}}
 
-	suite.ml.On("ApplyLedAction", mock.Anything,
-		mock.Anything).Return(&emptypb.Empty{}, nil)
 	suite.mockClients = &ClientPack{}
 	suite.mockClients.RestClient = &suite.mpi
 	suite.mockClients.NtpClient = &suite.mn
@@ -68,92 +61,115 @@ func initMocks(suite *TestSuite) {
 	suite.mockClients.NetworkClient = &suite.mNet
 
 	suite.app.Clients = suite.mockClients
-
 }
 
 func TestSuiteAll(t *testing.T) {
 	suite.Run(t, new(TestSuite))
-
 }
 
 func (suite *TestSuite) TearDownSuite() {
 	suite.app.StopGRPC()
 	log.Println("Test suite end")
 }
+
+func (suite *TestSuite) Test_ApplyConfiguration_CallOrder() {
+	// Create a variable to track call order
+	callOrder := []string{}
+	orderMutex := sync.Mutex{}
+
+	// Mock Network with custom function to track call order
+	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			orderMutex.Lock()
+			callOrder = append(callOrder, "network")
+			orderMutex.Unlock()
+		}).
+		Return(&emptypb.Empty{}, nil).Once()
+
+	// Mock NTP with custom function to track call order
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			orderMutex.Lock()
+			callOrder = append(callOrder, "ntp")
+			orderMutex.Unlock()
+		}).
+		Return(&emptypb.Empty{}, nil).Once()
+
+	// Execute the method
+	_, err := suite.app.serverInstance.ApplyConfiguration(context.Background(), deviceConfig)
+	suite.Nil(err)
+
+	// Assert call order
+	suite.Require().Len(callOrder, 2)
+	suite.Equal("network", callOrder[0], "Network should be configured first")
+	suite.Equal("ntp", callOrder[1], "NTP should be configured second")
+}
+
 func (suite *TestSuite) Test_ApplyAllConfigurations() {
-	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
-		nil).Once()
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
-	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 	_, err := suite.app.serverInstance.ApplyConfiguration(context.Background(), deviceConfig)
 	suite.Nil(err, "apply test failed", err)
 }
+
 func (suite *TestSuite) Test_ApplyAllConfigurationsWithNetworkFail() {
-	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
-		nil).Once()
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, errors.New("virtual error")).Once()
-	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 	_, err := suite.app.serverInstance.ApplyConfiguration(context.Background(), deviceConfig)
 	suite.NotNil(err, "apply test failed", err)
 }
+
 func (suite *TestSuite) Test_ApplyAllConfigurationsWithNtpFail() {
+	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).
+		Return(&emptypb.Empty{}, nil).Once()
 
 	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
 		errors.New("virtual error")).Once()
-	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
+
 	_, err := suite.app.serverInstance.ApplyConfiguration(context.Background(), deviceConfig)
 	suite.NotNil(err, "apply test failed", err)
 }
+
 func (suite *TestSuite) TestOnboardServer_OnboardWithUSB() {
-
-	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
-		nil).Once()
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
-	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
-
-	suite.mpi.On("Activate", mock.Anything).
-		Return(true, nil).Once()
+	suite.mpi.On("Activate", mock.Anything).Return(true, nil).Once()
 	suite.mpi.On("Onboarded").Return(false, true).Once()
 	_, err := suite.app.serverInstance.OnboardWithUSB(context.Background(), deviceConfig)
 	suite.Nil(err, "apply test failed", err)
-
 }
 
 func (suite *TestSuite) TestOnboardServer_OnboardWithUSB_FailActivate() {
 	suite.mpi.On("Onboarded").Return(false, true).Once()
-	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{},
-		nil).Once()
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 	suite.mpi.On("Activate", mock.Anything).
 		Return(false, errors.New("virtual error")).Once()
 	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
-	suite.ml.On("ApplyLedAction", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
-
 	_, err2 := suite.app.serverInstance.OnboardWithUSB(context.Background(), deviceConfig)
 	suite.NotNil(err2, "apply test failed", err2)
-
 }
+
 func (suite *TestSuite) TestOnboardServer_OnboardWithUSB_AlreadyOnboardedCase() {
 	suite.mpi.On("Onboarded").Return(true, true).Once()
+	suite.mNet.On("ApplySettings", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
+	suite.mn.On("SetNtpServer", mock.Anything, mock.Anything).Return(&emptypb.Empty{}, nil).Once()
 
 	_, err2 := suite.app.serverInstance.OnboardWithUSB(context.Background(), deviceConfig)
 	suite.NotNil(err2, "apply test failed", err2)
-
 }
 
 func (suite *TestSuite) TestOnboardServer_SetOnboardingStatus() {
-
 	_, err := suite.app.serverInstance.SetOnboardingStatus(context.Background(), &v1.OnboardingStatus{IsOnboarded: true})
 	suite.Nil(err, "apply test failed", err)
 }
 
 func (suite *TestSuite) TestOnboardServer_SetOnboardingStatusWithFalse() {
 	_, err := suite.app.serverInstance.SetOnboardingStatus(context.Background(), &v1.OnboardingStatus{IsOnboarded: false})
-
 	suite.Nil(err, "apply test failed", err)
 }
+
 func (suite *TestSuite) TestOnboardServer_SetOnboardingStatusWithNil() {
 	_, err := suite.app.serverInstance.SetOnboardingStatus(context.Background(), nil)
-
 	suite.NotNil(err, "apply test failed", err)
 }
 
@@ -163,21 +179,96 @@ func (suite *TestSuite) TestOnboardServer_CreateHelper() {
 }
 
 func (suite *TestSuite) TestOnboardServer_StartApp() {
+	// Create a context with cancel to control the goroutine
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	//first call should return error
 	suite.mpi.On("Onboarded").Return(false, false).Once()
 	//second call no error
 	suite.mpi.On("Onboarded").Return(false, true).Once()
-	suite.app.StartApp()
+
+	// Pass context to StartApp
+	suite.app.StartAppWithContext(ctx)
+
+	// Wait for the goroutine to complete its checks
+	time.Sleep(100 * time.Millisecond)
+
+	// Cancel will stop the goroutine
+	cancel()
+
+	// Give time for cleanup
+	time.Sleep(100 * time.Millisecond)
+}
+
+func (suite *TestSuite) TestOnboardServer_StartApp_TickerSuccess() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	suite.mpi.On("Onboarded").Return(false, false).Once()
+	// Second call (first ticker) should return false
+	suite.mpi.On("Onboarded").Return(false, false).Once()
+	// Third call (second ticker) should return true and container accessible
+	suite.mpi.On("Onboarded").Return(true, true).Once()
+
+	suite.app.StartAppWithContext(ctx)
+
+	// Wait for 2 ticker intervals plus buffer
+	time.Sleep(2*onboardCheckInterval + 5*time.Second)
+
+	suite.app.serverInstance.Mutex.Lock()
+	isAccessible := suite.app.serverInstance.isContainerAccessible
+	isOnboarded := suite.app.serverInstance.status.IsOnboarded
+	suite.app.serverInstance.Mutex.Unlock()
+
+	suite.True(isAccessible)
+	suite.True(isOnboarded)
+
+	// Cancel to cleanup
+	cancel()
+	time.Sleep(100 * time.Millisecond)
+}
+
+func (suite *TestSuite) TestOnboardServer_checkAndUpdateOnboardStatus_Success() {
+	// Mock successful onboard check
+	suite.mpi.On("Onboarded").Return(true, true).Once()
+
+	result := suite.app.checkAndUpdateOnboardStatus()
+
+	suite.True(result, "Expected checkAndUpdateOnboardStatus to return true")
+	suite.True(suite.app.serverInstance.isContainerAccessible, "Expected isContainerAccessible to be true")
+	suite.True(suite.app.serverInstance.status.IsOnboarded, "Expected IsOnboarded status to be true")
+}
+
+func (suite *TestSuite) TestOnboardServer_checkAndUpdateOnboardStatus_ContainerNotAccessible() {
+	// Mock container not accessible
+	suite.mpi.On("Onboarded").Return(false, false).Once()
+
+	result := suite.app.checkAndUpdateOnboardStatus()
+
+	suite.False(result, "Expected checkAndUpdateOnboardStatus to return false")
+}
+
+func (suite *TestSuite) TestOnboardServer_checkAndUpdateOnboardStatus_NotOnboarded() {
+	// Mock container accessible but not onboarded
+	suite.mpi.On("Onboarded").Return(false, true).Once()
+
+	result := suite.app.checkAndUpdateOnboardStatus()
+
+	suite.True(result, "Expected checkAndUpdateOnboardStatus to return true when container is accessible")
+	suite.True(suite.app.serverInstance.isContainerAccessible, "Expected isContainerAccessible to be true")
+	suite.False(suite.app.serverInstance.status.IsOnboarded, "Expected IsOnboarded status to be false")
 }
 
 func (suite *TestSuite) TestOnboardServer_Subscribe() {
+	suite.mpi.On("Onboarded").Return(false, true).Maybe()
+
 	channel := make(chan struct{})
 	listener := &MockListener{
 		receivedStatus: &v1.OnboardingStatus{
 			IsOnboarded: false,
 			Message:     "",
 		},
-
 		context:     &mockContext{doneChannel: channel},
 		doneChannel: channel,
 	}
@@ -193,7 +284,6 @@ func (suite *TestSuite) TestOnboardServer_Subscribe() {
 
 	channel <- struct{}{}
 	time.Sleep(200 * time.Millisecond)
-
 }
 
 func (suite *TestSuite) Test_VerifyArgsForStartGRPC_WithDummySocketForUnix() {
@@ -204,12 +294,13 @@ func (suite *TestSuite) Test_VerifyArgsForStartGRPC_WithDummySocketForUnix() {
 
 	//Connection failure is expected with dummy sock
 	suite.NotNil(tErr, "Did not get expected result. got: %q", tErr)
-
 }
-func (suite *TestSuite) Test_VerifyArgsForStartGRPC() {
 
+func (suite *TestSuite) Test_VerifyArgsForStartGRPC() {
+	done := make(chan bool)
 	//Create App to use
 	go func() {
+		defer close(done)
 		tArgs := []string{"onboardservice", "unix", "/tmp/temp.sock"}
 		tErr := suite.app.StartGRPC(tArgs)
 
@@ -218,37 +309,36 @@ func (suite *TestSuite) Test_VerifyArgsForStartGRPC() {
 	}()
 
 	time.Sleep(100 * time.Millisecond)
-
+	suite.app.StopGRPC()
+	<-done // Wait for goroutine to finish
 }
 
 func (suite *TestSuite) Test_VerifyArgsForStartGRPC_TCP() {
+	done := make(chan bool)
 	//Create App to use
 	go func() {
+		defer close(done)
 		tArgs := []string{"onboardservice", "tcp", ":4444"}
 		tErr := suite.app.StartGRPC(tArgs)
-
-		//Connection failure is expected with dummy sock
 		suite.Nil(tErr, "Did not get expected result. got: %q", tErr)
 	}()
 
 	time.Sleep(100 * time.Millisecond)
-
+	suite.app.StopGRPC()
+	<-done // Wait for goroutine to finish
 }
+
 func (suite *TestSuite) Test_VerifyArgsForStartGRPCInvalidArgs() {
 	//Create App to use
-
 	tArgs := []string{"onboardservice", "unix", "hey", "/tmp/temp.sock"}
 	tErr := suite.app.StartGRPC(tArgs)
-
 	//Connection failure is expected with dummy sock
 	suite.NotNil(tErr, "Did not get expected result. got: %q", tErr)
-
 }
 
 func (suite *TestSuite) TestOnboardServer_ClientFactory() {
 	cf := ClientFactoryImpl{}
 	var clients = cf.CreateClients()
-
 	suite.NotNil(clients, "Client factory did not run")
 }
 

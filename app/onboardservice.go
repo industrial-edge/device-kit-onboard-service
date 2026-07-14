@@ -7,6 +7,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -22,6 +23,8 @@ import (
 
 	"google.golang.org/grpc"
 )
+
+const onboardCheckInterval = 10 * time.Second
 
 // DeviceModelService defines the common service interface
 type DeviceModelService interface {
@@ -150,24 +153,50 @@ func chownSocket(address string, userName string, groupName string) error {
 
 // StartApp starts things up
 func (app *MainApp) StartApp() {
-	log.Println("Initializing App")
+	app.StartAppWithContext(context.Background())
+}
+
+// StartAppWithContext starts things up with a context for cancellation
+func (app *MainApp) StartAppWithContext(ctx context.Context) {
+	log.Println("Initializing App - Starting onboard status monitoring")
 
 	go func() {
+		if app.checkAndUpdateOnboardStatus() {
+			log.Println("Onboard status monitoring completed successfully")
+			return
+		}
+
+		log.Printf("Initial onboard check: container not accessible yet, will retry in %v...", onboardCheckInterval)
+
+		ticker := time.NewTicker(onboardCheckInterval)
+		defer ticker.Stop()
+
 		for {
-			onboardStatus, isContainerAccessible := app.Clients.RestClient.Onboarded()
-			if isContainerAccessible {
-				log.Printf("Onboard status check successful. Onboarded: %v", onboardStatus)
-
-				// Onboarded successfully, update the status
-				app.serverInstance.isContainerAccessible = isContainerAccessible
-				app.serverInstance.status.IsOnboarded = onboardStatus
-
-				// Break out of the loop, as the onboard check is successful
-				break
+			select {
+			case <-ctx.Done():
+				log.Println("Context cancelled, stopping onboard status monitoring")
+				return
+			case <-ticker.C:
+				if app.checkAndUpdateOnboardStatus() {
+					log.Println("Onboard status monitoring completed successfully")
+					return
+				}
 			}
-
-			// Sleep for a while before the next onboard check
-			time.Sleep(10 * time.Second)
 		}
 	}()
+}
+
+// checks the onboard status and updates the server instance if accessible
+// Returns true if the container is accessible, false otherwise
+func (app *MainApp) checkAndUpdateOnboardStatus() bool {
+	onboardStatus, isContainerAccessible := app.Clients.RestClient.Onboarded()
+	if isContainerAccessible {
+		log.Printf("Onboard status check successful. Onboarded: %v", onboardStatus)
+		app.serverInstance.Mutex.Lock()
+		app.serverInstance.isContainerAccessible = isContainerAccessible
+		app.serverInstance.status.IsOnboarded = onboardStatus
+		app.serverInstance.Mutex.Unlock()
+		return true
+	}
+	return false
 }

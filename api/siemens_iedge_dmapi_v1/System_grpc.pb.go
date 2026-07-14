@@ -17,6 +17,7 @@ package siemens_iedge_dmapi_v1
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -41,6 +42,7 @@ const (
 	SystemService_ApplyCustomSettings_FullMethodName = "/siemens.iedge.dmapi.system.v1.SystemService/ApplyCustomSettings"
 	SystemService_GetLogFile_FullMethodName          = "/siemens.iedge.dmapi.system.v1.SystemService/GetLogFile"
 	SystemService_UpdateHostname_FullMethodName      = "/siemens.iedge.dmapi.system.v1.SystemService/UpdateHostname"
+	SystemService_GetDeviceInfo_FullMethodName       = "/siemens.iedge.dmapi.system.v1.SystemService/GetDeviceInfo"
 	SystemService_GetHostname_FullMethodName         = "/siemens.iedge.dmapi.system.v1.SystemService/GetHostname"
 )
 
@@ -74,6 +76,8 @@ type SystemServiceClient interface {
 	GetLogFile(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error)
 	// Updates the hostname of the device with the provided string.
 	UpdateHostname(ctx context.Context, in *Hostname, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Returns DeviceInfo information of system.
+	GetDeviceInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DeviceInfo, error)
 	// Retrieves the current hostname of the device.
 	GetHostname(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Hostname, error)
 }
@@ -196,6 +200,16 @@ func (c *systemServiceClient) UpdateHostname(ctx context.Context, in *Hostname, 
 	return out, nil
 }
 
+func (c *systemServiceClient) GetDeviceInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DeviceInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeviceInfo)
+	err := c.cc.Invoke(ctx, SystemService_GetDeviceInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *systemServiceClient) GetHostname(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Hostname, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Hostname)
@@ -236,6 +250,8 @@ type SystemServiceServer interface {
 	GetLogFile(context.Context, *LogRequest) (*LogResponse, error)
 	// Updates the hostname of the device with the provided string.
 	UpdateHostname(context.Context, *Hostname) (*emptypb.Empty, error)
+	// Returns DeviceInfo information of system.
+	GetDeviceInfo(context.Context, *emptypb.Empty) (*DeviceInfo, error)
 	// Retrieves the current hostname of the device.
 	GetHostname(context.Context, *emptypb.Empty) (*Hostname, error)
 	mustEmbedUnimplementedSystemServiceServer()
@@ -280,6 +296,9 @@ func (UnimplementedSystemServiceServer) GetLogFile(context.Context, *LogRequest)
 }
 func (UnimplementedSystemServiceServer) UpdateHostname(context.Context, *Hostname) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateHostname not implemented")
+}
+func (UnimplementedSystemServiceServer) GetDeviceInfo(context.Context, *emptypb.Empty) (*DeviceInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDeviceInfo not implemented")
 }
 func (UnimplementedSystemServiceServer) GetHostname(context.Context, *emptypb.Empty) (*Hostname, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHostname not implemented")
@@ -503,6 +522,24 @@ func _SystemService_UpdateHostname_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SystemService_GetDeviceInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SystemServiceServer).GetDeviceInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SystemService_GetDeviceInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SystemServiceServer).GetDeviceInfo(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SystemService_GetHostname_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -571,6 +608,10 @@ var SystemService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateHostname",
 			Handler:    _SystemService_UpdateHostname_Handler,
+		},
+		{
+			MethodName: "GetDeviceInfo",
+			Handler:    _SystemService_GetDeviceInfo_Handler,
 		},
 		{
 			MethodName: "GetHostname",
