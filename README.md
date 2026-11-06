@@ -58,3 +58,8 @@ Once the CLA is signed, your Pull Request will automatically be cleared and made
 
 # How to be part of Siemens Industrial Edge Ecosystem
 Please check [this](https://new.siemens.com/global/en/products/automation/topic-areas/industrial-edge.html) page to learn more information about Industrial Edge.
+
+# Funding Acknowledgment
+
+Funded by the Federal Ministry for Economic Affairs and Energy based on a decision by the German Bundestag. Your funding provider: Kicks for Edge as part of the EU funding program IPCEI-CIS (FKZ:13IPC008)  
+<img src="./assets/images/funding_logo.png" width="33%">
